@@ -14,10 +14,14 @@ use Symfony\Component\Routing\Attribute\Route;
 final class ProductController extends AbstractController
 {
     #[Route('', methods: ['GET'])]
-    public function index(ProductRepository $repo): JsonResponse
+    public function index(ProductRepository $repo, Request $request): JsonResponse
     {
-        $products = $repo->findAll();
-        return $this->json($products, 200);
+        $currentPage = $request->query->getInt('page', 1);
+        $limit = 10;
+
+        $paginator = $repo->findPaginated($currentPage, $limit);
+        // $products = $repo->findAll();
+        return $this->json($paginator, 200, );
     }
 
     #[Route('', methods:['POST'])]
@@ -37,13 +41,36 @@ final class ProductController extends AbstractController
         return $this->json($product, 201);
     }
 
+    #[Route('/top-products', name: 'top_products', methods: ['GET'])]
+    public function topRated(ProductRepository $repo): JsonResponse
+    {
+        $topProducts = $repo->findTopRated();
+
+        $formatted = array_map(function ($row) {
+            return [
+                'id' => $row[0]->getId(),
+                'name' => $row[0]->getName(),
+                'price' => $row[0]->getPrice(),
+                'description' => $row[0]->getDescription(),
+                'avgRating' => round($row['avgRating'], 2),
+            ];
+        }, $topProducts);
+
+        return $this->json($formatted);
+    }
+
+
     #[Route('/{id}', methods: ['GET'])]
     public function show(Product $product): JsonResponse
     {
+        if(!$product){
+            return $this->json(['Error' => 'Produto não encontrado']);
+        }
+
         return $this->json($product, 200);
     }
 
-    #[Route('/{id}', methods: ['PUT'])]
+    #[Route('/{id}/edit', methods: ['PUT'])]
     public function update(Request $request, Product $product, EntityManagerInterface $em)
     {
         $data = json_decode($request->getContent(), true);
@@ -57,7 +84,7 @@ final class ProductController extends AbstractController
         return $this->json($product, 200);
     }
 
-    #[Route('/{id}', methods: ['DELETE'])]
+    #[Route('/{id}/delete', methods: ['DELETE'])]
     public function delete(Product $product, EntityManagerInterface $em): JsonResponse
     {
         $em->remove($product);
@@ -65,4 +92,5 @@ final class ProductController extends AbstractController
 
         return $this->json(null, 204);
     }
+
 }

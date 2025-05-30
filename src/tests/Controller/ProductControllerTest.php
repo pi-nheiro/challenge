@@ -8,9 +8,12 @@ final class ProductControllerTest extends WebTestCase
 {
     public function testIndex(): void
     {
-        $client = static::createClient();
-        $client->request('GET', '/product');
 
-        self::assertResponseIsSuccessful();
+        $client = static::createClient();
+        $client->request('GET', '/api/products');
+
+        $this->assertResponseIsSuccessful();
+        $this->assertResponseFormatSame('json');
+
     }
 }
