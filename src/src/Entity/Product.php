@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 
+use Symfony\Component\Serializer\Annotation\Ignore;
 use App\Repository\ProductRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -34,6 +35,7 @@ class Product
      * @var Collection<int, Review>
      */
     // #[Groups(['product:read'])]
+    // #[Ignore]
     #[ORM\OneToMany(targetEntity: Review::class, mappedBy: 'product')]
     private Collection $reviews;
 
