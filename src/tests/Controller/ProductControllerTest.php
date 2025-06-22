@@ -6,72 +6,86 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 final class ProductControllerTest extends WebTestCase
 {
-    public function testIndexReturnsPaginatedProducts(): void{
-        $client = static::createClient();
+    private const API_PRODUCT_URL = '/api/products';
+    private $client;
 
-        $client->request('GET', '/api/products?page=1');
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->client = static::createClient();
+    }
+
+    private function createProductViaApi(array $productData): array{
+        $this->client->request(
+            'POST',
+            self::API_PRODUCT_URL,
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            json_encode($productData)
+        );
+
+        $this->assertResponseStatusCodeSame(201);
+        return json_decode($this->client->getResponse()->getContent(), true);
+    }
+
+    public function testIndexReturnsPaginatedProducts(): void
+    {
+        $this->client->request('GET', self::API_PRODUCT_URL . '?page=1');
 
         $this->assertResponseIsSuccessful();
         $this->assertResponseHeaderSame('Content-Type', 'application/json');
 
-        $data = json_decode($client->getResponse()->getContent(), true);
+        $data = json_decode($this->client->getResponse()->getContent(), true);
 
         $this->assertIsArray($data);
 
+        // $this->assertGreaterThanOrEqual(0, count($data));
         $this->assertCount(10, $data);
-        $this->assertArrayHasKey('id', $data[0]);
+        if(!empty($data)){
+            $this->assertArrayHasKey('id', $data[0]);
+            $this->assertArrayHasKey('name', $data[0]);
+            $this->assertArrayHasKey('price', $data[0]);
+        }
     }
 
-    public function testCreateProduct(): void{
-        $client = static::createClient();
-
-        $client->request('POST', '/api/products', [], [], ['CONTENT_TYPE' => 'application/json'],
-    json_encode([
-        'name' => 'Produto Teste',
-        'price' => 123.45,
-        'description' => 'Produto criado em teste automatizado.'
-    ]));
-
-    $this->assertResponseStatusCodeSame(201);
-    
-    $responseData = json_decode($client->getResponse()->getContent(), true);
-
-    $this->assertArrayHasKey('id', $responseData);
-    $this->assertEquals('Produto Teste', $responseData['name']);
-    $this->assertEquals(123.45, $responseData['price']);
-    $this->assertEquals('Produto criado em teste automatizado.', $responseData['description']);
-    }
-
-    public function testShowProduct(): void{
-        $client = static::createClient();
-
-        $client->request('POST', 
-        'api/products',
-        [],
-        [],
-        ['CONTENT_TYPE' => 'application/json'],
-        json_encode([
-            'name' => 'Produto Show Teste',
+    public function testCreateProduct(): void
+    {
+        $newProductData = [
+            'name' => 'Novo produto criado em teste.',
             'price' => 99.99,
-            'description' => 'Produto criado para teste do método show',
-        ])
-    );
+            'description' => 'no método testCreateProduct'
+        ];
 
-    $this->assertResponseStatusCodeSame(201);
-    
-    $data = json_decode($client->getResponse()->getContent(), true);
-    $productId = $data['id'];
+        $responseData = $this->createProductViaApi($newProductData);
 
-    //Fazendo teste do método show
-    $client->request('GET', "/api/products/{$productId}");
 
-    $this->assertResponseIsSuccessful();
-    $this->assertResponseStatusCodeSame(200);
-    
-    $showData = json_decode($client->getResponse()->getContent(), true);
+        $this->assertArrayHasKey('id', $responseData);
+        $this->assertEquals($newProductData['name'], $responseData['name']);
+        $this->assertEquals($newProductData['price'], $responseData['price']);
+        $this->assertEquals($newProductData['description'], $responseData['description']);
+    }
 
-    $this->assertEquals('Produto Show Teste', $showData['name']);
-    $this->assertEquals(99.99, $showData['price']);
-    $this->assertEquals('Produto criado para teste do método show', $showData['description']);
+    public function testShowProduct(): void
+    {
+        $newProductData = [
+            'name' => 'Produto criado para teste',
+            'price' => 99.99,
+            'description' => 'Produto criado para testar endpoint de visualização'
+        ];
+
+        $responseData = $this->createProductViaApi($newProductData);
+        $productId = $responseData['id'];
+
+        $this->client->request('GET', self::API_PRODUCT_URL . "/{$productId}");
+
+        $this->assertResponseIsSuccessful();
+        $this->assertResponseStatusCodeSame(200);
+
+        $showData = json_decode($this->client->getResponse()->getContent(), true);
+
+        $this->assertEquals($newProductData['name'], $showData['name']);
+        $this->assertEquals($newProductData['price'], $showData['price']);
+        $this->assertEquals($newProductData['description'], $showData['description']);
     }
 }
